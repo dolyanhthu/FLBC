@@ -43,4 +43,13 @@ class FlowerClient(fl.client.NumPyClient):
         # do local training
         train(self.model, self.trainloaders, optim, epochs, self.device)
 
-        return self.get_parameters(), len(self.trainloaders), {}
+        return self.get_parameters({}), len(self.trainloaders), {}
+
+def generate_client_fn(trainloaders, valloaders, num_classes):
+    def client_fn(cid: str):
+        client = FlowerClient(trainloaders=trainloaders[int(cid)], 
+                            valloaders=valloaders[int(cid)],
+                            num_classes=num_classes)
+        return client.to_client()
+    
+    return client_fn
