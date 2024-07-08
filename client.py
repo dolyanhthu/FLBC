@@ -44,7 +44,7 @@ class FlowerClient(fl.client.NumPyClient):
 
         return self.get_parameters({}), len(self.trainloaders), {}
 
-def generate_client_fn(trainloaders, valloaders, num_classes):
+def generate_client_fn(trainloaders, valloaders):
     def client_fn(cid: str):
         client = FlowerClient(trainloaders=trainloaders[int(cid)], 
                             valloaders=valloaders[int(cid)])

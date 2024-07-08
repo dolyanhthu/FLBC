@@ -16,7 +16,7 @@ def get_on_fit_config(config: DictConfig):
     
     return fit_config_fn
 
-def get_evaluate_fn(num_classes: int, testloader):
+def get_evaluate_fn(testloader):
     def evaluate_fn(server_round: int, parameters, config):
         model = model()
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
