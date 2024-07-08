@@ -20,6 +20,7 @@ def get_evaluate_fn(testloader):
     def evaluate_fn(server_round: int, parameters, config):
         model = yolo()
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        model.to(device)
 
         params_dict = zip(model.state_dict().keys(), parameters)
         state_dict = OrderedDict({k: torch.Tensor(v) for k, v in params_dict})

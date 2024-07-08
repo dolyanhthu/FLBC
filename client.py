@@ -5,26 +5,18 @@ from typing import Dict, Tuple
 import flwr as fl
 import torch
 
-from model import yolo, train
+from model import yolo, train, test
 
 class FlowerClient(fl.client.NumPyClient):
-    def __init__(self, 
-                 trainloaders, 
-                 valloaders) -> None:
-        super().__init__()
-
+    def __init__(self, trainloaders, valloaders) -> None:
         self.trainloaders = trainloaders
         self.valloaders = valloaders
-
         self.model = yolo()
-
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     def set_parameters(self, parameters):
         params_dict = zip(self.model.state_dict().keys(), parameters)
-
         state_dict = OrderedDict({k: torch.Tensor(v) for k, v in params_dict})
-
         self.model.load_state_dict(state_dict, strict=True)
 
     def get_parameters(self, config: Dict[str, Scalar]):
@@ -43,6 +35,12 @@ class FlowerClient(fl.client.NumPyClient):
         train(self.model, self.trainloaders, optim, epochs, self.device)
 
         return self.get_parameters({}), len(self.trainloaders), {}
+    
+    def evaluate(self, parameters: NDArrays, config: Dict[str, Scalar]):
+        self.set_parameters(parameters=parameters)
+        loss, accuracy = test(self.model, self.valloaders, device=self.device)
+
+        return float(loss), len(self.valloaders), {"accuracy": accuracy}
 
 def generate_client_fn(trainloaders, valloaders):
     def client_fn(cid: str):

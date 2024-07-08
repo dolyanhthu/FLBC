@@ -11,7 +11,7 @@ def yolo():
     
 def train(model, trainloader, optimizer, epochs, device: str):
     criterion = torch.nn.CrossEntropyLoss()
-    model.model.train()
+    model.train()
     model.to(device)
     for epoch in range(epochs):
         running_loss = 0.0
@@ -22,7 +22,7 @@ def train(model, trainloader, optimizer, epochs, device: str):
             optimizer.zero_grad()
 
             # Forward pass
-            ouputs = model.model(images)
+            ouputs = model(images)
             loss = criterion(ouputs, labels)
 
             # Backward pass and optimize
@@ -39,12 +39,12 @@ def train(model, trainloader, optimizer, epochs, device: str):
 def test(model, testloader, device: str):
     criterion = torch.nn.CrossEntropyLoss()
     correct, loss = 0, 0.0
-    model.model.eval()
+    model.eval()
     model.to(device)
     with torch.no_grad():
         for data in testloader:
             images, labels = data[0].to(device), data[1].to(device)
-            outputs = model.model(images)
+            outputs = model(images)
             loss += criterion(outputs, labels).item()
             _, predicted = torch.max(outputs.data, 1)
             correct += (predicted == labels).sum().item()
