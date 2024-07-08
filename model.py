@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from ultralytics import YOLO
 
-def model():
+def yolo():
     model = YOLO("yolov8n-cls.pt")
     return model
 

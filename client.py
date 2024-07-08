@@ -5,7 +5,7 @@ from typing import Dict, Tuple
 import flwr as fl
 import torch
 
-from model import model, train
+from model import yolo, train
 
 class FlowerClient(fl.client.NumPyClient):
     def __init__(self, 
@@ -16,7 +16,7 @@ class FlowerClient(fl.client.NumPyClient):
         self.trainloaders = trainloaders
         self.valloaders = valloaders
 
-        self.model = model()
+        self.model = yolo()
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
