@@ -5,19 +5,18 @@ from typing import Dict, Tuple
 import flwr as fl
 import torch
 
-from model import Net, train, test
+from model import model, train
 
 class FlowerClient(fl.client.NumPyClient):
     def __init__(self, 
                  trainloaders, 
-                 valloaders,
-                 num_classes) -> None:
+                 valloaders) -> None:
         super().__init__()
 
         self.trainloaders = trainloaders
         self.valloaders = valloaders
 
-        self.model = Net(num_classes)
+        self.model = model()
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -48,8 +47,7 @@ class FlowerClient(fl.client.NumPyClient):
 def generate_client_fn(trainloaders, valloaders, num_classes):
     def client_fn(cid: str):
         client = FlowerClient(trainloaders=trainloaders[int(cid)], 
-                            valloaders=valloaders[int(cid)],
-                            num_classes=num_classes)
+                            valloaders=valloaders[int(cid)])
         return client.to_client()
     
     return client_fn

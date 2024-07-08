@@ -4,7 +4,7 @@ from hydra.utils import instantiate
 
 import torch
 
-from model import Net, test
+from model import model, test
 
 def get_on_fit_config(config: DictConfig):
     def fit_config_fn(server_round: int):
@@ -18,7 +18,7 @@ def get_on_fit_config(config: DictConfig):
 
 def get_evaluate_fn(num_classes: int, testloader):
     def evaluate_fn(server_round: int, parameters, config):
-        model = Net(num_classes=num_classes)
+        model = model()
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         params_dict = zip(model.state_dict().keys(), parameters)
