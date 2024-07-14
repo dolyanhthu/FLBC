@@ -1,49 +1,28 @@
-from collections import OrderedDict
-from flwr.common import NDArrays, Scalar
-from typing import Dict, Tuple
-
 import flwr as fl
-import torch
 
-from model import yolo, train, test
-
+VERBOSE = 0
 class FlowerClient(fl.client.NumPyClient):
-    def __init__(self, trainloaders, valloaders) -> None:
-        self.trainloaders = trainloaders
-        self.valloaders = valloaders
-        self.model = yolo()
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    def __init__(self, train_set, test_set, model) -> None:
+        # Create model
+        self.model = model
+        self.train_set = train_set
+        self.test_set = test_set
 
-    def set_parameters(self, parameters):
-        params_dict = zip(self.model.state_dict().keys(), parameters)
-        state_dict = OrderedDict({k: torch.Tensor(v) for k, v in params_dict})
-        self.model.load_state_dict(state_dict, strict=True)
-
-    def get_parameters(self, config: Dict[str, Scalar]):
-        return [val.cpu().numpy() for _, val in self.model.state_dict().items()]
+    def get_parameters(self, config):
+        return self.model.get_weights()
 
     def fit(self, parameters, config):
-        # copy parameters sent by the server into client's local model
-        self.set_parameters(parameters)
+        self.model.set_weights(parameters)
+        self.model.fit(self.train_set, epochs=10, verbose=VERBOSE)
+        return self.model.get_weights(), len(self.train_set), {}
 
-        lr = config['lr']
-        momentum = config['momentum']
-        epochs = config["local_epochs"]
-        optim = torch.optim.SGD(self.model.parameters(), lr=lr, momentum=momentum)
-
-        # do local training
-        train(self.model, self.trainloaders, optim, epochs, self.device)
-
-        return self.get_parameters({}), len(self.trainloaders), {}
+    def evaluate(self, parameters, config):
+        self.model.set_weights(parameters)
+        loss, acc = self.model.evaluate(self.test_set, verbose=VERBOSE)
+        return loss, len(self.test_set), {"accuracy": acc}
     
-    def evaluate(self, parameters: NDArrays, config: Dict[str, Scalar]):
-        self.set_parameters(parameters=parameters)
-        loss, accuracy = test(self.model, self.valloaders, device=self.device)
-
-        return float(loss), len(self.valloaders), {"accuracy": accuracy}
-
 def generate_client_fn(trainloaders, valloaders):
-    def client_fn(cid: str):
+    def client_fn(cid: str) -> fl.client.Client:
         client = FlowerClient(trainloaders=trainloaders[int(cid)], 
                             valloaders=valloaders[int(cid)])
         return client.to_client()

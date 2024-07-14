@@ -1,52 +1,53 @@
-import torch
-from torch.utils.data import random_split, DataLoader
-from torchvision.transforms import ToTensor, Normalize, Compose
-from torchvision.datasets import MNIST
+import keras
+import tensorflow as tf
 
-def get_mnist(data_path: str = './data'):
+batch_size = 32
+img_height = 180
+img_width = 180
 
-    tr = Compose([ToTensor(), Normalize((0.1307,), (0.3081,))])
+train_ds = keras.utils.image_dataset_from_directory(
+    "./Fruits_Classification/train",
+    seed=123,
+    image_size=(img_height, img_width),
+    batch_size=batch_size
+)
 
-    train_set = MNIST(data_path, train=True, download=True, transform=tr)
-    test_set = MNIST(data_path, train=False, download=True, transform=tr)
+val_ds = keras.utils.image_dataset_from_directory(
+    "./Fruits_Classification/valid",
+    seed=123,
+    image_size=(img_height, img_width),
+    batch_size=batch_size
+)
 
-    return train_set, test_set
+test_ds = keras.utils.image_dataset_from_directory(
+    "./Fruits_Classification/test",
+    seed=123,
+    image_size=(img_height, img_width),
+    batch_size=batch_size
+)
 
-def prepare_dataset(num_partitions: int, batch_size: int, val_ratio: float = 0.1):
-    """Download MNIST and generate IID partitions."""
+def partition(dataset, num_clients: int):
+  dataset = dataset.shuffle(buffer_size=1000, seed=123)
 
-    trainset, testset = get_mnist()
+  num_batches = tf.data.experimental.cardinality(dataset).numpy()
 
-    num_images = len(trainset) // num_partitions
+  batches_per_client = num_batches // num_clients
 
-    partition_len = [num_images] * num_partitions
+  sub_datasets = []
 
-    trainsets = random_split(
-        trainset, partition_len, torch.Generator().manual_seed(2023)
-    )
+  for i in range(num_clients):
+      start = i * batches_per_client
+      end = (i + 1) * batches_per_client
+      if i == num_clients - 1:
+          end = num_batches
+      sub_dataset = dataset.skip(start).take(batches_per_client)
+      sub_datasets.append(sub_dataset)
+    
+  return sub_datasets
 
-    # create dataloaders with train+val support
-    trainloaders = []
-    valloaders = []
-    # for each train set, let's put aside some training examples for validation
-    for trainset_ in trainsets:
-        num_total = len(trainset_)
-        num_val = int(val_ratio * num_total)
-        num_train = num_total - num_val
+def get_dataset(num_clients: int):
+    train_loaders = partition(train_ds, num_clients)
+    val_loaders = partition(val_ds, num_clients)
+    test_loaders = partition(test_ds, num_clients)
 
-        for_train, for_val = random_split(
-            trainset_, [num_train, num_val], torch.Generator().manual_seed(2023)
-        )
-
-        # construct data loaders and append to their respective list.
-        # In this way, the i-th client will get the i-th element in the trainloaders list and the i-th element in the valloaders list
-        trainloaders.append(
-            DataLoader(for_train, batch_size=batch_size, shuffle=True, num_workers=2)
-        )
-        valloaders.append(
-            DataLoader(for_val, batch_size=batch_size, shuffle=False, num_workers=2)
-        )
-
-    testloader = DataLoader(testset, batch_size=128)
-
-    return trainloaders, valloaders, testloader
+    return train_loaders, val_loaders, test_loaders

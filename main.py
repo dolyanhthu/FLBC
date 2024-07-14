@@ -1,9 +1,9 @@
 import hydra
 import flwr as fl
 from omegaconf import DictConfig, OmegaConf
-from dataset import prepare_dataset
+from dataset import get_dataset
 from client import generate_client_fn
-from server import get_on_fit_config, get_evaluate_fn
+from server import get_evaluate_fn, weighted_average
 
 @hydra.main(config_path="conf", config_name="base", version_base=None)
 
@@ -13,7 +13,7 @@ def main(cfg: DictConfig):
     print(OmegaConf.to_yaml(cfg=cfg))
 
     # 2. Prepare datasets
-    train_loaders, validation_loaders, test_loaders = prepare_dataset(cfg.num_clients, cfg.batch_size)
+    train_loaders, validation_loaders, test_loaders = get_dataset(cfg.num_clients)
 
     # 3. Define your clients
     client_fn = generate_client_fn(train_loaders, validation_loaders)
@@ -25,8 +25,8 @@ def main(cfg: DictConfig):
         fraction_evaluate=0.0001,
         min_evaluate_clients=cfg.num_clients_per_round_eval,
         min_available_clients=cfg.num_clients,
-        on_fit_config_fn=get_on_fit_config(config=cfg.config_fit),
-        evaluate_fn=get_evaluate_fn(test_loaders)
+        evaluate_fn=get_evaluate_fn(test_loaders),
+        evaluate_metrics_aggregation_fn=weighted_average
     )
 
     # 5. Start simulation
