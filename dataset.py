@@ -1,5 +1,6 @@
 import keras
 import tensorflow as tf
+import numpy as np
 
 batch_size = 32
 img_height = 180
@@ -41,6 +42,7 @@ def partition(dataset, num_clients: int):
       if i == num_clients - 1:
           end = num_batches
       sub_dataset = dataset.skip(start).take(batches_per_client)
+      sub_dataset = sub_dataset.prefetch(buffer_size=tf.data.AUTOTUNE)
       sub_datasets.append(sub_dataset)
     
   return sub_datasets
@@ -48,6 +50,6 @@ def partition(dataset, num_clients: int):
 def get_dataset(num_clients: int):
     train_loaders = partition(train_ds, num_clients)
     val_loaders = partition(val_ds, num_clients)
-    test_loaders = partition(test_ds, num_clients)
+    test_loaders = test_ds
 
     return train_loaders, val_loaders, test_loaders
