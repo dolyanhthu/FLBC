@@ -27,29 +27,50 @@ test_ds = keras.utils.image_dataset_from_directory(
     batch_size=batch_size
 )
 
+def normalize_img(image, label):
+    image = tf.cast(image, tf.float32) / 255.0
+    return image, label
+
+def to_numpy(dataset):
+    dataset = dataset.map(normalize_img)
+
+    combined_data = []
+
+    for image_batch, label_batch in train_ds:
+        for img, lbl in zip(image_batch.numpy(), label_batch.numpy()):
+            combined_data.append((img, lbl))
+
+    combined_data = np.array(combined_data, dtype=object)
+
+    return combined_data
+
 def partition(dataset, num_clients: int):
-  dataset = dataset.shuffle(buffer_size=1000, seed=123)
+    dataset = dataset.map(normalize_img)
 
-  num_batches = tf.data.experimental.cardinality(dataset).numpy()
+    combined_data = to_numpy(dataset)
 
-  batches_per_client = num_batches // num_clients
+    #   num_batches = len(combined_data)
 
-  sub_datasets = []
+    #   batches_per_client = num_batches // num_clients
 
-  for i in range(num_clients):
-      start = i * batches_per_client
-      end = (i + 1) * batches_per_client
-      if i == num_clients - 1:
-          end = num_batches
-      sub_dataset = dataset.skip(start).take(batches_per_client)
-      sub_dataset = sub_dataset.prefetch(buffer_size=tf.data.AUTOTUNE)
-      sub_datasets.append(sub_dataset)
-    
-  return sub_datasets
+    sub_datasets = np.array_split(combined_data, num_clients)
+
+    #   for i in range(num_clients):
+    #       start = i * batches_per_client
+    #       end = (i + 1) * batches_per_client
+    #       if i == num_clients - 1:
+    #           end = num_batches
+    #       sub_dataset = dataset.skip(start).take(batches_per_client)
+    #       sub_dataset = sub_dataset.prefetch(buffer_size=tf.data.AUTOTUNE)
+    #       sub_datasets.append(sub_dataset)
+        
+    return sub_datasets
 
 def get_dataset(num_clients: int):
     train_loaders = partition(train_ds, num_clients)
     val_loaders = partition(val_ds, num_clients)
-    test_loaders = test_ds
+    test_loaders = to_numpy(test_ds)
 
     return train_loaders, val_loaders, test_loaders
+
+train, _, _ = get_dataset(10)
